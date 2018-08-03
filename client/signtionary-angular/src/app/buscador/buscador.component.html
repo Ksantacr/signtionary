@@ -1,0 +1,25 @@
+<h1>Busqueda</h1>
+<input type="text" (keydown)="search($event)" placeholder="buscar items..." class="input">
+
+
+<div *ngIf="items$ | async; let items; else loading">
+  <ul>
+    <li *ngFor="let item of items">
+      {{ item.size }}
+    </li>
+  </ul>
+  <div *ngIf="items.length === 0">No results, try clearing filters</div>
+</div>
+<!--<div *ngFor="let item of items | async">
+  <h4>{{item?.color}}</h4>
+  <p>
+    {{item?.size}}
+  </p>
+</div>
+
+<div *ngIf="items?.length < 1">
+  <hr>
+  <p>
+    No hay resultados :(
+  </p>
+</div>-->

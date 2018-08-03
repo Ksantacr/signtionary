@@ -1,0 +1,9 @@
+<h1>Listado de paises con Angular</h1>
+
+<ol>
+  <li *ngFor="let pais of paises">{{pais.name}}
+  </li>
+</ol>
+
+<input type="text" placeholder="Nombre pais" id="pais" #pais>
+<button (click)=agregarPais($event)>Agregar Pais</button>

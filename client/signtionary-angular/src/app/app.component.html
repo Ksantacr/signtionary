@@ -1,6 +1,12 @@
-<ul>
-  <li class="text" *ngFor="let item of items | async">
-    {{item.name}}
-  </li>
-</ul>
-
+<nav>
+    <a>
+      <button color="primary" [routerLink]="'/'">Home</button>
+    </a>
+    <a>
+      <button color="secondary" [routerLink]="'/listar-paises'">Listar paises</button>
+    </a>
+  </nav>
+  <router-outlet></router-outlet>
+<footer>
+  Pie de página
+</footer>
