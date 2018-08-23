@@ -1,72 +1,67 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { AngularFirestore } from 'angularfire2/firestore';
-import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
-
-export interface Item {
-  text: string;
-  color: string;
-  size: string;
-}
+import { Subject, Observable } from 'rxjs';
+import { combineLatest } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  template: `
-  <div *ngIf="items$ | async; let items; else loading">
-    <ul>
-      <li *ngFor="let item of items">
-        {{ item.name }}
-      </li>
-    </ul>
-    <div *ngIf="items.length === 0">No results, try clearing filters</div>
-  </div>
-  <ng-template #loading>Loading&hellip;</ng-template>
-  <div>
-    <h4>Filter by size</h4>
-    <button (click)="filterBySize('small')">Small</button>
-    <button (click)="filterBySize('medium')">Medium</button>
-    <button (click)="filterBySize('large')">Large</button>
-    <button (click)="filterBySize(null)" *ngIf="this.sizeFilter$.getValue()">
-      <em>clear filter</em>
-    </button>
-  </div>
-  <div>
-    <h4>Filter by color</h4>
-    <button (click)="filterByColor('red')">Red</button>
-    <button (click)="filterByColor('green')">Blue</button>
-    <button (click)="filterByColor('blue')">Green</button>
-    <button (click)="filterByColor(null)" *ngIf="this.colorFilter$.getValue()">
-      <em>clear filter</em>
-    </button>
-  </div>
-  `,
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
 })
-export class AppComponent {
-  items$: Observable<any[]>;
-  sizeFilter$: BehaviorSubject<string|null>;
-  colorFilter$: BehaviorSubject<string|null>;
-  
-  constructor(afs: AngularFirestore) {
-    this.sizeFilter$ = new BehaviorSubject(null);
-    this.colorFilter$ = new BehaviorSubject(null);
-    this.items$ = combineLatest(
-      this.sizeFilter$,
-      this.colorFilter$
-    ).pipe(
-      switchMap(([size, color]) => 
-        afs.collection('items', ref => {
-          let query : firebase.firestore.CollectionReference | firebase.firestore.Query = ref;
-          if (size) { query = query.where('size', '==', size) };
-          if (color) { query = query.where('color', '==', color) };
-          return query;
-        }).valueChanges()
-      )
-    );
+export class AppComponent implements OnInit {
+
+  searchterm: string;
+
+  startAt = new Subject();
+  endAt = new Subject();
+
+  clubs;
+  allclubs;
+
+  startobs = this.startAt.asObservable();
+  endobs = this.endAt.asObservable();
+
+  constructor(private afs: AngularFirestore) {
+
+    /*this.afs.collection('palabras').add({
+      "descripcion": "Feelings",
+      "url": "https://www.youtube.com/watch?v=suz7pWi1mOs"
+    })*/
+
   }
-  filterBySize(size: string|null) {
-    this.sizeFilter$.next(size); 
+
+  ngOnInit() {
+    this.getallclubs().subscribe((clubs) => {
+      this.allclubs = clubs;
+    })
+
+    combineLatest(this.startobs, this.endobs).subscribe((value) => {
+      this.firequery(value[0], value[1]).subscribe((clubs) => {
+        this.clubs = clubs;
+      })
+    })
   }
-  filterByColor(color: string|null) {
-    this.colorFilter$.next(color); 
+
+  search($event) {
+    let q = $event.target.value;
+    if (q != '') {
+      this.startAt.next(q);
+      this.endAt.next(q + "\uf8ff");
+    }
+    else {
+      this.clubs = this.allclubs;
+    }
   }
+
+  firequery(start, end) {
+    return this.afs.collection('palabras', ref => ref.limit(10).orderBy('descripcion').startAt(start).endAt(end)).valueChanges();
+  }
+
+  getallclubs() {
+
+    
+    return this.afs.collection('palabras', ref => ref.orderBy('descripcion')).valueChanges();
+  }
+
+
 }
