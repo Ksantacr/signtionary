@@ -1,72 +1,128 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { AngularFirestore } from 'angularfire2/firestore';
-import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Subject, Observable } from 'rxjs';
+import { combineLatest } from 'rxjs';
+import { DomSanitizer, SafeResourceUrl, SafeUrl} from '@angular/platform-browser';
 
-export interface Item {
-  text: string;
-  color: string;
-  size: string;
-}
+import {Pipe, PipeTransform, NgModule} from '@angular/core'
+import {BrowserModule} from '@angular/platform-browser'
+
+@Pipe({name: 'safe'})
+export class SafePipe implements PipeTransform {
+
+  constructor(private sanitizer: DomSanitizer) {}
+  
+  transform(value: any, url: any): any {
+      if (value && !url) {
+          const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+          let match = value.match(regExp);
+          if (match && match[2].length == 11) {
+              console.log(match[2]);
+              let sepratedID = match[2];
+              let embedUrl = '//www.youtube.com/embed/' + sepratedID;
+              return this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
+          }
+       }
+     }
+  }
+
 
 @Component({
   selector: 'app-root',
-  template: `
-  <div *ngIf="items$ | async; let items; else loading">
-    <ul>
-      <li *ngFor="let item of items">
-        {{ item.name }}
-      </li>
-    </ul>
-    <div *ngIf="items.length === 0">No results, try clearing filters</div>
-  </div>
-  <ng-template #loading>Loading&hellip;</ng-template>
-  <div>
-    <h4>Filter by size</h4>
-    <button (click)="filterBySize('small')">Small</button>
-    <button (click)="filterBySize('medium')">Medium</button>
-    <button (click)="filterBySize('large')">Large</button>
-    <button (click)="filterBySize(null)" *ngIf="this.sizeFilter$.getValue()">
-      <em>clear filter</em>
-    </button>
-  </div>
-  <div>
-    <h4>Filter by color</h4>
-    <button (click)="filterByColor('red')">Red</button>
-    <button (click)="filterByColor('green')">Blue</button>
-    <button (click)="filterByColor('blue')">Green</button>
-    <button (click)="filterByColor(null)" *ngIf="this.colorFilter$.getValue()">
-      <em>clear filter</em>
-    </button>
-  </div>
-  `,
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
 })
-export class AppComponent {
-  items$: Observable<any[]>;
-  sizeFilter$: BehaviorSubject<string|null>;
-  colorFilter$: BehaviorSubject<string|null>;
-  
-  constructor(afs: AngularFirestore) {
-    this.sizeFilter$ = new BehaviorSubject(null);
-    this.colorFilter$ = new BehaviorSubject(null);
-    this.items$ = combineLatest(
-      this.sizeFilter$,
-      this.colorFilter$
-    ).pipe(
-      switchMap(([size, color]) => 
-        afs.collection('items', ref => {
-          let query : firebase.firestore.CollectionReference | firebase.firestore.Query = ref;
-          if (size) { query = query.where('size', '==', size) };
-          if (color) { query = query.where('color', '==', color) };
-          return query;
-        }).valueChanges()
-      )
-    );
+export class AppComponent implements OnInit {
+
+  searchterm: string;
+
+  startAt = new Subject();
+  endAt = new Subject();
+
+  clubs;
+  allclubs;
+
+  startobs = this.startAt.asObservable();
+  endobs = this.endAt.asObservable();
+
+  constructor(private afs: AngularFirestore, private sanitizer: DomSanitizer) {
+
   }
-  filterBySize(size: string|null) {
-    this.sizeFilter$.next(size); 
+
+  ngOnInit() {
+    this.getallclubs().subscribe((clubs) => {
+      this.allclubs = clubs;
+      //console.log(this.allclubs)
+      this.allclubs.forEach(c => {
+
+        //console.log(c.url)
+        c.url_ = this.parseVideo(c.url);
+        //c.url_ = "https://www.youtube.com/embed/"+ c.url_.id;
+        //c.filUrl = "https://www.youtube.com/embed/"+ c.url_.id;
+        //c.url2 =this.sanitizer.bypassSecurityTrustResourceUrl(c.url);
+        //console.log(c.url2);
+
+        //this.myUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.topic.video.url);
+
+
+        //console.log(asd)
+      });
+      
+    })
+
+    combineLatest(this.startobs, this.endobs).subscribe((value) => {
+      this.firequery(value[0], value[1]).subscribe((clubs) => {
+        this.clubs = clubs;
+        this.allclubs = clubs;
+      })
+    })
   }
-  filterByColor(color: string|null) {
-    this.colorFilter$.next(color); 
+
+  search($event) {
+    let q = $event.target.value;
+    //console.log(q)
+    //if (q != '') {
+      this.startAt.next(q);
+      this.endAt.next(q + "\uf8ff");
+    //}
+    //else {
+    //  this.clubs = this.allclubs;
+    //}
   }
+
+  firequery(start, end) {
+    return this.afs.collection('palabras', ref => ref.limit(10).orderBy('descripcion').startAt(start).endAt(end)).valueChanges();
+  }
+
+  getallclubs() {
+    
+    return this.afs.collection('palabras', ref => ref.limit(10).orderBy('descripcion')).valueChanges();
+  }
+
+  parseVideo (url) {
+    // - Supported YouTube URL formats:
+    //   - http://www.youtube.com/watch?v=My2FRPA3Gf8
+    //   - http://youtu.be/My2FRPA3Gf8
+    //   - https://youtube.googleapis.com/v/My2FRPA3Gf8
+    // - Supported Vimeo URL formats:
+    //   - http://vimeo.com/25451551
+    //   - http://player.vimeo.com/video/25451551
+    // - Also supports relative URLs:
+    //   - //player.vimeo.com/video/25451551
+
+    url.match(/(http:|https:|)\/\/(player.|www.)?(vimeo\.com|youtu(be\.com|\.be|be\.googleapis\.com))\/(video\/|embed\/|watch\?v=|v\/)?([A-Za-z0-9._%-]*)(\&\S+)?/);
+
+    if (RegExp.$3.indexOf('youtu') > -1) {
+        var type = 'youtube';
+    } else if (RegExp.$3.indexOf('vimeo') > -1) {
+        var type = 'vimeo';
+    }
+
+    return {
+        type: type,
+        id: RegExp.$6
+    };
+  }
+
+
 }

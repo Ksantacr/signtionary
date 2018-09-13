@@ -1,6 +1,18 @@
-<ul>
+<!--<ul>
   <li class="text" *ngFor="let item of items | async">
     {{item.name}}
   </li>
 </ul>
 
+-->
+
+<input type="text" [(ngModel)]="searchterm" (keydown)="search($event)">
+<ul *ngFor="let club of allclubs">
+  <li>{{club.descripcion }}</li>
+
+  <iframe id="ytplayer" type="text/html" width="640" height="360"  [src]="club.url | safe" frameborder="0" allowfullscreen></iframe>
+    <!--src="https://www.youtube.com/embed/{{club.finalUrl}}/"-->
+</ul>
+<div *ngIf="allclubs?.length < 1">
+  <p>No se encontraron resultados</p>
+</div>
