@@ -1,14 +1,13 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
-
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
-
-import { AngularFireModule } from 'angularfire2';
-import { AngularFirestoreModule } from 'angularfire2/firestore';
+import { FormsModule } from '@angular/forms';
+import { AppComponent, SafePipe } from './app.component';
 import { environment } from '../environments/environment';
-import { ListarPaisesComponent } from './listar-paises/listar-paises.component';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpModule } from '@angular/http';
+
+//AngularFireStuff
+import { AngularFireModule} from 'angularfire2';
+import { AngularFirestore, AngularFirestoreModule} from 'angularfire2/firestore';
 
 import { PaisesService } from "./services/paises.service";
 import { BuscadorComponent } from './buscador/buscador.component';
@@ -18,15 +17,13 @@ import { AngularFireDatabase,
 @NgModule({
   declarations: [
     AppComponent,
-    ListarPaisesComponent,
-    BuscadorComponent
+    SafePipe
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule,
+    FormsModule,
     AngularFireModule.initializeApp(environment.firebase),
-    AngularFirestoreModule,
-    HttpClientModule
+    AngularFirestoreModule.enablePersistence()
   ],
   providers: [PaisesService, BuscadorFirebaseService, AngularFireDatabase],
   bootstrap: [AppComponent]
